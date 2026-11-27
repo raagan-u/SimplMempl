@@ -15,7 +15,19 @@ pub struct ValidatorPipeline<T> {
 
 impl Default for ValidatorPipeline<Transaction> {
     fn default() -> Self {
-        ValidatorPipeline { validator_funcs: vec![] }
+        let tx_id_check = Box::new(| tx : &Transaction| !tx.id.is_empty());
+        ValidatorPipeline { validator_funcs: vec![tx_id_check] }
+    }
+}
+
+impl ValidatorPipeline<Transaction> {
+    pub fn check_tx(&self, tx: &Transaction) -> Result<bool, NodeError> {
+        for i in &self.validator_funcs {
+            if i(tx) == false {
+                return Ok(false);
+            }
+        }
+        Ok(true)
     }
 }
 
@@ -26,8 +38,23 @@ pub enum NodeError {
 }
 
 impl Node {
-    pub fn submit_tx(tx: Transaction) -> Result<TxStatus, NodeError> {
-        
-        Ok(TxStatus::Accpeted)
+    pub fn new(validator: ValidatorPipeline<Transaction>, mempool: Mempool, blockchain: Blockchain) -> Node {
+        Self { validator, mempool, blockchain }
+    }
+    
+    pub fn submit_tx(&mut self, tx: Transaction) -> Result<TxStatus, NodeError> {
+        let result = self.validator.check_tx(&tx);
+        match result {
+            Ok(true) => {
+                self.mempool.submit_tx(tx);
+                return Ok(TxStatus::Accpeted)
+            },
+            Ok(false) => return Ok(TxStatus::Rejected),
+            Err(e) => return Err(e)
+        }
+    }
+
+    pub fn tx_status(&self, id: &str) -> Option<TxStatus> {
+        self.mempool.tx_status(id)
     }
 }
