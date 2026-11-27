@@ -1,3 +1,7 @@
+use thiserror::Error;
+
+mod node;
+
 pub struct Transaction {
     id: String,
     fee: u64,
@@ -19,11 +23,14 @@ pub struct Mempool {
     
 }
 
-// co-ordinator that validates submitted txs, and triggers mempool's state transitions
-pub struct Node {
-    mempool: Mempool,
-    blockchain: Blockchain
+pub enum TxStatus {
+    Accpeted,
+    Rejected,
+    Pending,
+    Confirmed,
+    Dropped
 }
+
 
 fn main() {
     println!("Hello, world!");
